@@ -31,6 +31,7 @@ x.y.z Release notes (yyyy-MM-dd)
   }
   ```
   ([Cocoa #7633](https://github.com/realm/realm-swift/issues/7633), since v10.19.0)
+* Fix redundant calling to filter on `@ObservedResults` from `searchable` component, since v10.19.0.
 
 <!-- ### Breaking Changes - ONLY INCLUDE FOR NEW MAJOR version -->
 

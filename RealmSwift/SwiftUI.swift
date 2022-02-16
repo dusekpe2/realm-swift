@@ -232,6 +232,7 @@ private class ObservableStorage<ObservedType>: ObservableObject where ObservedTy
         willSet {
             if newValue != value {
                 objectWillChange.subscribers.forEach {
+                    $0.receive(completion: .finished)
                     $0.receive(subscription: ObservationSubscription(token: newValue._observe(keyPaths, $0)))
                 }
                 objectWillChange.send()
@@ -446,10 +447,24 @@ extension Projection: _ObservedResultsValue { }
                 didSet()
             }
         }
+
+        var searchString: String = ""
     }
 
     @Environment(\.realmConfiguration) var configuration
     @ObservedObject private var storage: Storage
+    /// :nodoc:
+    fileprivate func searchText<T: ObjectBase>(_ text: String, on keyPath: KeyPath<T, String>) {
+        if text.isEmpty {
+            if storage.filter != nil {
+                storage.filter = nil
+            }
+        } else if text != storage.searchString {
+            storage.filter = Query<T>()[dynamicMember: keyPath].contains(text).predicate
+        }
+        storage.searchString = text
+    }
+
     /// :nodoc:
     @State public var filter: NSPredicate? {
         willSet {
@@ -1576,21 +1591,17 @@ extension View {
      */
     public func searchable<T: ObjectBase, V, S>(text: Binding<String>, collection: ObservedResults<T>, keyPath: KeyPath<T, String>,
                                                 placement: SearchFieldPlacement = .automatic, prompt: S, @ViewBuilder suggestions: () -> V)
-            -> some View where V: View, S: StringProtocol {
+    -> some View where V: View, S: StringProtocol {
         filterCollection(collection, for: text.wrappedValue, on: keyPath)
         return searchable(text: text,
                           placement: placement,
                           prompt: prompt,
                           suggestions: suggestions)
     }
-
+    
     private func filterCollection<T: ObjectBase>(_ collection: ObservedResults<T>, for text: String, on keyPath: KeyPath<T, String>) {
         DispatchQueue.main.async {
-            if text.isEmpty {
-                collection.filter = nil
-            } else {
-                collection.filter = Query<T>()[dynamicMember: keyPath].contains(text).predicate
-            }
+            collection.searchText(text, on: keyPath)
         }
     }
 }
